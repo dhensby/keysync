@@ -16,7 +16,13 @@ var (
 	username string
 )
 
+const (
+	STARTMARKER = "### AUTOMATICALLY MANAGED KEYS ###"
+	ENDMARKER = "### END OF AUTOMATICALLY MANAGED KEYS ###"
+)
+
 func main() {
+	// Parse the CLI flags
 	flag.Parse()
 	if flag.NFlag() == 0 {
 		fmt.Printf("Usage: %s [options]\n", os.Args[0])
@@ -25,75 +31,30 @@ func main() {
 		os.Exit(1)
 	}
 
-	userDir, uid, gid := getUserInfo()
+	// get the file handle for the key file and pull out the data
+	fh := getKeyFileHandle("")
+	keyData := getKeyLines(fh)
 
-	// try to find authorized_keys file
-	keysFile := userDir + "/.ssh/authorized_keys"
-
-	fmt.Printf("Attempting to find key file %s\n", keysFile)
-	fh, err := os.OpenFile(keysFile, os.O_RDWR | os.O_CREATE, os.FileMode(0600))
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fh.Chown(uid, gid)
-
-	keyFileScanner := bufio.NewScanner(fh)
-
-	newKeyFileData := ""
-	inMarker := false
-
-	for keyFileScanner.Scan() {
-		line := keyFileScanner.Text()
-		if inMarker {
-			if line == "### END OF AUTOMATICALLY MANAGED KEYS ###" {
-				inMarker = false
-			}
-		} else {
-			if line == "### AUTOMATICALLY MANAGED KEYS ###" {
-				inMarker = true
-			} else if line != "" {
-				newKeyFileData += line + "\n"
-			}
-		}
-	}
-
-	fileStat, err := fh.Stat()
-	err = fh.Truncate(fileStat.Size())
-
-	// insert new keys between markers
-	// write authorized_keys file with correct perms / owner
-
+	// load the keys from the gist
 	fmt.Printf("Loading public keys from gist: %s\n", gist)
 	result := getGist(gist)
 
+	// build a new file content for the key file with the current file data
 	scanner := bufio.NewScanner(strings.NewReader(result))
 
-	newKeyFileData += "\n### AUTOMATICALLY MANAGED KEYS ###\n\n"
+	keyData += "\n" + STARTMARKER + "\n\n"
 
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.HasPrefix(line, "#") {
 			continue
 		}
-		newKeyFileData += line + "\n"
+		keyData += line + "\n"
 	}
 
-	newKeyFileData += "\n### END OF AUTOMATICALLY MANAGED KEYS ###\n\n"
+	keyData += "\n" + ENDMARKER + "\n"
 
-	// this seems to append not overwrite
-	_, err = fh.WriteString(newKeyFileData)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = fh.Close()
-
-	if err != nil {
-		log.Fatal(err)
-	}
+	writeFileContent(fh, keyData)
 }
 
 func init() {
@@ -119,4 +80,73 @@ func getUserInfo() (string, int, int) {
 	gid, err := strconv.Atoi(osUser.Gid)
 
 	return osUser.HomeDir, uid, gid
+}
+
+func getKeyFileHandle(filename string) *os.File {
+	if filename == "" {
+		filename = "authorized_keys"
+	}
+
+	userDir, uid, gid := getUserInfo()
+
+	// try to find authorized_keys file
+	keysFile := userDir + "/.ssh/authorized_keys"
+
+	fmt.Printf("Attempting to find key file %s\n", keysFile)
+
+	fh, err := os.OpenFile(keysFile, os.O_RDWR | os.O_CREATE, os.FileMode(0600))
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer fh.Close()
+
+	err = fh.Chown(uid, gid)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return fh
+}
+
+func getKeyLines(fh *os.File) string {
+
+	keyFileScanner := bufio.NewScanner(fh)
+
+	newKeyFileData := ""
+	inMarker := false
+
+	for keyFileScanner.Scan() {
+		line := keyFileScanner.Text()
+		if inMarker {
+			if line == ENDMARKER {
+				inMarker = false
+			}
+		} else {
+			if line == STARTMARKER {
+				inMarker = true
+			} else if line != "" {
+				newKeyFileData += line + "\n"
+			}
+		}
+	}
+
+	return newKeyFileData
+}
+
+func writeFileContent(fh os.File, content string) {
+	// we have to truncate the file otherwise data is just written to the end of the file
+	fileStat, err := fh.Stat()
+	err = fh.Truncate(fileStat.Size())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = fh.WriteString(content)
+
+	if err != nil {
+		log.Fatal(err)
+	}
 }
