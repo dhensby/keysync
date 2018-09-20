@@ -33,6 +33,7 @@ func main() {
 
 	// get the file handle for the key file and pull out the data
 	fh := getKeyFileHandle("")
+	defer fh.Close()
 	keyData := getKeyLines(fh)
 
 	// load the keys from the gist
@@ -100,8 +101,6 @@ func getKeyFileHandle(filename string) *os.File {
 		log.Fatal(err)
 	}
 
-	defer fh.Close()
-
 	err = fh.Chown(uid, gid)
 
 	if err != nil {
@@ -136,10 +135,10 @@ func getKeyLines(fh *os.File) string {
 	return newKeyFileData
 }
 
-func writeFileContent(fh os.File, content string) {
+func writeFileContent(fh *os.File, content string) {
 	// we have to truncate the file otherwise data is just written to the end of the file
-	fileStat, err := fh.Stat()
-	err = fh.Truncate(fileStat.Size())
+	//fileStat, err := fh.Stat()
+	err := fh.Truncate(0)
 	if err != nil {
 		log.Fatal(err)
 	}
