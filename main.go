@@ -136,14 +136,26 @@ func getKeyLines(fh *os.File) string {
 }
 
 func writeFileContent(fh *os.File, content string) {
-	// we have to truncate the file otherwise data is just written to the end of the file
-	//fileStat, err := fh.Stat()
-	err := fh.Truncate(0)
+
+	_, err := fh.Seek(0, 0)
+
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	_, err = fh.WriteString(content)
+	bytesWritten, err := fh.WriteString(content)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = fh.Truncate(int64(bytesWritten))
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = fh.Sync()
 
 	if err != nil {
 		log.Fatal(err)
