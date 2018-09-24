@@ -2,9 +2,14 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"crypto/md5"
 	"fmt"
 	flag "github.com/ogier/pflag"
+	"io"
 	"log"
+	"net/http"
+	"net/url"
 	"os"
 	"os/user"
 	"strconv"
@@ -143,6 +148,32 @@ func writeFileContent(fh *os.File, content string) {
 		log.Fatal(err)
 	}
 
+	originalMd5 := md5.New()
+
+	_, err = io.Copy(originalMd5, fh)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	newMd5 := md5.New()
+
+	_, err = io.WriteString(newMd5, content)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if bytes.Equal(originalMd5.Sum(nil), newMd5.Sum(nil)) {
+		return
+	}
+
+	_, err = fh.Seek(0, 0)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	bytesWritten, err := fh.WriteString(content)
 
 	if err != nil {
@@ -160,4 +191,30 @@ func writeFileContent(fh *os.File, content string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	notify()
+}
+
+func notify() {
+	if config.PushoverAppKey == "" || config.PushoverUserKey == "" {
+		return
+	}
+
+	hostname, err := os.Hostname()
+
+	formData := url.Values{
+		"token": {config.PushoverAppKey},
+		"user": {config.PushoverUserKey},
+		"title": {"SSH keys update on " + hostname},
+		"message": {"The SSH keys on the device " + hostname + "were updated"},
+	}
+
+	body := bytes.NewBufferString(formData.Encode())
+
+	resp, err := http.Post("https://api.pushover.net/1/messages.json", "application/x-www-form-urlencoded", body)
+
+	if err != nil {
+		return
+	}
+
+	defer resp.Body.Close()
 }
