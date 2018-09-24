@@ -205,7 +205,7 @@ func notify() {
 		"token": {config.PushoverAppKey},
 		"user": {config.PushoverUserKey},
 		"title": {"SSH keys update on " + hostname},
-		"message": {"The SSH keys on the device " + hostname + "were updated"},
+		"message": {"The SSH keys on the device " + hostname + " were updated"},
 	}
 
 	body := bytes.NewBufferString(formData.Encode())
