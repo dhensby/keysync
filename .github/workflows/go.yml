@@ -60,7 +60,7 @@ jobs:
         run: go mod download
 
       - name: Build
-        run: go build -v ./... -o "keysync.${{ matrix.GOOS }}-${{ matrix.GOARCH }}"
+        run: go build -o "keysync.${{ matrix.GOOS }}-${{ matrix.GOARCH }}" -v ./...
         env:
           GOOS: ${{ matrix.GOOS }}
           GOARCH: ${{ matrix.GOARCH }}
