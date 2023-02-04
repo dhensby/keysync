@@ -1,21 +1,31 @@
 # This workflow will build a golang project
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
 
-name: Release App
+name: Test & Release
 
 on:
   push:
+    pull_request:
+    branches-ignore:
+      - 'dependabot/**'
     tags:
       - '*'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
       - name: Create Release
         run: gh release create "${{  github.ref_name }}" --generate-notes
         env:
@@ -23,19 +33,34 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    needs: release
     strategy:
       matrix:
         GOOS: [darwin, linux]
         GOARCH: [amd64, arm64]
     steps:
+      - uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
-          go-version: 1.20
+          go-version-file: 'go.mod'
+
+      - name: Restore Go modules cache
+        uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: go-${{ runner.os }}-${{ hashFiles('go.mod') }}
+          restore-keys: |
+            go-${{ runner.os }}-
+
+      - name: Download dependencies
+        run: go mod download
 
       - name: Build
-        run: go build -v ./... -o "keysync.${{ matrix.GOOS }}-${{ matrix.GOARCH }}"
+        run: go build -o "keysync.${{ matrix.GOOS }}-${{ matrix.GOARCH }}" -v ./...
         env:
           GOOS: ${{ matrix.GOOS }}
           GOARCH: ${{ matrix.GOARCH }}
@@ -46,6 +71,13 @@ jobs:
           GOOS: ${{ matrix.GOOS }}
           GOARCH: ${{ matrix.GOARCH }}
 
+  publish:
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
+    permissions:
+      contents: write
+    needs: build
+    steps:
       - name: Upload asset
         run: gh release upload "${{  github.ref_name }}" "./keysync.${{ matrix.GOOS }}-${{ matrix.GOARCH }}"
         env:
