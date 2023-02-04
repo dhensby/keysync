@@ -21,7 +21,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
         with:
           persist-credentials: false
           fetch-depth: 0
@@ -31,14 +32,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
-  build:
+  test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        GOOS: [darwin, linux]
-        GOARCH: [amd64, arm64]
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
         with:
           persist-credentials: false
           fetch-depth: 0
@@ -59,12 +57,6 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      - name: Build
-        run: go build -o "./build/keysync.${{ matrix.GOOS }}-${{ matrix.GOARCH }}" -v ./...
-        env:
-          GOOS: ${{ matrix.GOOS }}
-          GOARCH: ${{ matrix.GOARCH }}
-
       - name: Test
         run: go test -v ./...
         env:
@@ -74,11 +66,43 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     if: github.ref_type == 'tag'
+    strategy:
+      matrix:
+        GOOS: [darwin, linux]
+        GOARCH: [amd64, arm64]
     permissions:
       contents: write
-    needs: build
+    needs: test
     steps:
-      - name: Upload asset
-        run: gh release upload "${{ github.ref_name }}" $(ls -1 ./.build/keysync.*-*)
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Restore Go modules cache
+        uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: go-${{ runner.os }}-${{ hashFiles('go.mod') }}
+          restore-keys: |
+            go-${{ runner.os }}-
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build binary
+        run: go build -o "./build/keysync.${{ matrix.GOOS }}-${{ matrix.GOARCH }}" -v ./...
+        env:
+          GOOS: ${{ matrix.GOOS }}
+          GOARCH: ${{ matrix.GOARCH }}
+
+      - name: Upload binary
+        run: gh release upload "${{ github.ref_name }}" "./build/keysync.${{ matrix.GOOS }}-${{ matrix.GOARCH }}"
         env:
           GH_TOKEN: ${{ github.token }}
