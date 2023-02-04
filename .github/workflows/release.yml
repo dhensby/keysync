@@ -68,6 +68,7 @@ jobs:
         env:
           GOOS: ${{ matrix.GOOS }}
           GOARCH: ${{ matrix.GOARCH }}
+          CGO_CXXFLAGS: '-std=c++11'
 
       - name: Upload binary
         run: gh release upload "${{ github.ref_name }}" "./build/keysync.${{ matrix.GOOS }}-${{ matrix.GOARCH }}"
