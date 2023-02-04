@@ -4,26 +4,27 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/md5"
+	"flag"
 	"fmt"
-	flag "github.com/ogier/pflag"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"os/user"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
 
 var (
-	gist string
+	ghuser   string
 	username string
 )
 
 const (
 	STARTMARKER = "### AUTOMATICALLY MANAGED KEYS ###"
-	ENDMARKER = "### END OF AUTOMATICALLY MANAGED KEYS ###"
+	ENDMARKER   = "### END OF AUTOMATICALLY MANAGED KEYS ###"
 )
 
 func main() {
@@ -41,9 +42,11 @@ func main() {
 	defer fh.Close()
 	keyData := getKeyLines(fh)
 
-	// load the keys from the gist
-	fmt.Printf("Loading public keys from gist: %s\n", gist)
-	result := getGist(gist)
+	// load the keys from the github user
+	fmt.Printf("Loading public keys from GitHub user: %s\n", ghuser)
+	result := getGitHubUserKeys(ghuser)
+
+	log.Print(result)
 
 	// build a new file content for the key file with the current file data
 	scanner := bufio.NewScanner(strings.NewReader(result))
@@ -64,8 +67,8 @@ func main() {
 }
 
 func init() {
-	flag.StringVarP(&gist, "gist", "g", "", "The gist to use as the source of your public keys")
-	flag.StringVarP(&username, "user", "u", "", "The user to manage the authorised keys of")
+	flag.StringVar(&ghuser, "gh-user", "", "The GitHub user to fetch keys for")
+	flag.StringVar(&username, "user", "", "The user to manage the authorised keys of")
 }
 
 func getUserInfo() (string, int, int) {
@@ -96,11 +99,11 @@ func getKeyFileHandle(filename string) *os.File {
 	userDir, uid, gid := getUserInfo()
 
 	// try to find authorized_keys file
-	keysFile := userDir + "/.ssh/authorized_keys"
+	keysFile := filepath.ToSlash(userDir + "/.ssh/authorized_keys")
 
 	fmt.Printf("Attempting to find key file %s\n", keysFile)
 
-	fh, err := os.OpenFile(keysFile, os.O_RDWR | os.O_CREATE, os.FileMode(0600))
+	fh, err := os.OpenFile(keysFile, os.O_RDWR|os.O_CREATE, os.FileMode(0600))
 
 	if err != nil {
 		log.Fatal(err)
@@ -109,7 +112,7 @@ func getKeyFileHandle(filename string) *os.File {
 	err = fh.Chown(uid, gid)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 
 	return fh
@@ -202,9 +205,9 @@ func notify() {
 	hostname, err := os.Hostname()
 
 	formData := url.Values{
-		"token": {config.PushoverAppKey},
-		"user": {config.PushoverUserKey},
-		"title": {"SSH keys update on " + hostname},
+		"token":   {config.PushoverAppKey},
+		"user":    {config.PushoverUserKey},
+		"title":   {"SSH keys update on " + hostname},
 		"message": {"The SSH keys on the device " + hostname + " were updated"},
 	}
 
