@@ -27,7 +27,7 @@ jobs:
           fetch-depth: 0
 
       - name: Create Release
-        run: gh release create "${{  github.ref_name }}" --generate-notes
+        run: gh release create "${{ github.ref_name }}" --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -60,7 +60,7 @@ jobs:
         run: go mod download
 
       - name: Build
-        run: go build -o "keysync.${{ matrix.GOOS }}-${{ matrix.GOARCH }}" -v ./...
+        run: go build -o "./build/keysync.${{ matrix.GOOS }}-${{ matrix.GOARCH }}" -v ./...
         env:
           GOOS: ${{ matrix.GOOS }}
           GOARCH: ${{ matrix.GOARCH }}
@@ -79,6 +79,6 @@ jobs:
     needs: build
     steps:
       - name: Upload asset
-        run: gh release upload "${{  github.ref_name }}" "./keysync.${{ matrix.GOOS }}-${{ matrix.GOARCH }}"
+        run: gh release upload "${{ github.ref_name }}" $(ls -1 ./.build/keysync.*-*)
         env:
           GH_TOKEN: ${{ github.token }}
