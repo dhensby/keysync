@@ -46,8 +46,6 @@ func main() {
 	fmt.Printf("Loading public keys from GitHub user: %s\n", ghuser)
 	result := getGitHubUserKeys(ghuser)
 
-	log.Print(result)
-
 	// build a new file content for the key file with the current file data
 	scanner := bufio.NewScanner(strings.NewReader(result))
 
