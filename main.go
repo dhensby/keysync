@@ -95,6 +95,8 @@ func main() {
 	keyData += "\n" + ENDMARKER + "\n"
 
 	writeFileContent(fh, keyData)
+
+	notify()
 }
 
 func init() {
@@ -225,7 +227,6 @@ func writeFileContent(fh *os.File, content string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	notify()
 }
 
 func notify() {
