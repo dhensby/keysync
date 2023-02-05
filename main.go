@@ -96,7 +96,13 @@ func main() {
 
 	writeFileContent(fh, keyData)
 
-	notify()
+	totalKeys := strings.Count(result, "\n")
+
+	if len(result) > 0 && !strings.HasSuffix(result, "\n") {
+		totalKeys++
+	}
+
+	notify(totalKeys)
 }
 
 func init() {
@@ -234,9 +240,17 @@ func writeFileContent(fh *os.File, content string) {
 	}
 }
 
-func notify() {
+func notify(added int) {
 	if config.PushoverAppKey == "" || config.PushoverUserKey == "" {
 		return
+	}
+
+	var message string
+
+	if added == 1 {
+		message = fmt.Sprintf("is %d key", added)
+	} else {
+		message = fmt.Sprintf("are %d keys", added)
 	}
 
 	hostname, err := os.Hostname()
@@ -244,8 +258,8 @@ func notify() {
 	formData := url.Values{
 		"token":   {config.PushoverAppKey},
 		"user":    {config.PushoverUserKey},
-		"title":   {"SSH keys update on " + hostname},
-		"message": {"The SSH keys on the device " + hostname + " were updated"},
+		"title":   {fmt.Sprintf("SSH keys update on %s", hostname)},
+		"message": {fmt.Sprintf("There %s from GitHub now authorized for user %s", message, username)},
 	}
 
 	body := bytes.NewBufferString(formData.Encode())
