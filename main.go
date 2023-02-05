@@ -259,7 +259,7 @@ func notify(added int) {
 		"token":   {config.PushoverAppKey},
 		"user":    {config.PushoverUserKey},
 		"title":   {fmt.Sprintf("SSH keys update on %s", hostname)},
-		"message": {fmt.Sprintf("There %s from GitHub now authorized for user %s", message, username)},
+		"message": {fmt.Sprintf("There %s from GitHub user %s now authorized for local user %s", message, ghuser, username)},
 	}
 
 	body := bytes.NewBufferString(formData.Encode())
