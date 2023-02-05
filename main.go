@@ -36,7 +36,7 @@ func printversion() {
 	var commit string
 	var modified bool
 	if versionnum != "" {
-		versionstring = fmt.Sprintf("v%s", versionnum)
+		versionstring = fmt.Sprintf("%s", versionnum)
 	}
 	if info, ok := debug.ReadBuildInfo(); ok {
 		for _, setting := range info.Settings {
@@ -55,7 +55,7 @@ func printversion() {
 	if commit != "" {
 		versionstring = fmt.Sprintf("%s (%s)", versionstring, commit)
 	}
-	fmt.Printf("%s: %s", filepath.Base(os.Args[0]), versionstring)
+	fmt.Printf("%s: %s\n", filepath.Base(os.Args[0]), versionstring)
 }
 
 func main() {

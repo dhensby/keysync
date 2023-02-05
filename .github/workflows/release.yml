@@ -64,7 +64,7 @@ jobs:
           GOARCH: ${{ matrix.GOARCH }}
 
       - name: Build binary
-        run: go build -ldflags "-X main.versionnum='${{ github.ref_name }}'" -o "./build/keysync.${{ matrix.GOOS }}-${{ matrix.GOARCH }}" -v ./...
+        run: go build -ldflags "-X main.versionnum=${{ github.ref_name }}" -o "./build/keysync.${{ matrix.GOOS }}-${{ matrix.GOARCH }}" -v ./...
         env:
           GOOS: ${{ matrix.GOOS }}
           GOARCH: ${{ matrix.GOARCH }}
