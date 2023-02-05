@@ -21,6 +21,7 @@ import (
 var (
 	ghuser      string
 	username    string
+	authfile    string
 	showversion bool
 	versionnum  string
 )
@@ -71,12 +72,11 @@ func main() {
 	}
 
 	// get the file handle for the key file and pull out the data
-	fh := getKeyFileHandle("")
+	fh := getKeyFileHandle(authfile)
 	defer fh.Close()
 	keyData := getKeyLines(fh)
 
 	// load the keys from the github user
-	fmt.Printf("Loading public keys from GitHub user: %s\n", ghuser)
 	result := getGitHubUserKeys(ghuser)
 
 	// build a new file content for the key file with the current file data
@@ -100,22 +100,23 @@ func main() {
 }
 
 func init() {
+	osUser, err := user.Current()
+
+	if err != nil {
+		log.Fatal("Unable to determine current user")
+	}
+
 	flag.StringVar(&ghuser, "gh-user", "", "The GitHub user to fetch keys for")
-	flag.StringVar(&username, "user", "", "The user to manage the authorised keys of")
+	flag.StringVar(&username, "user", osUser.Username, "The user to manage the authorised keys of")
+	flag.StringVar(&authfile, "authfile", "authorized_keys", "The authorized_keys file")
+	flag.BoolVar(&showversion, "version", false, "Show the version info")
 }
 
 func getUserInfo() (string, int, int) {
-	var osUser *user.User
-	var err error
-	if username == "" {
-		osUser, err = user.Current()
-		fmt.Printf("No user supplied, assuming %s\n", osUser.Username)
-	} else {
-		osUser, err = user.Lookup(username)
-	}
+	osUser, err := user.Lookup(username)
 
 	if err != nil {
-		fmt.Println("Failed to get user")
+		log.Fatalf("Failed to get user: %s", username)
 	}
 
 	uid, err := strconv.Atoi(osUser.Uid)
@@ -125,14 +126,18 @@ func getUserInfo() (string, int, int) {
 }
 
 func getKeyFileHandle(filename string) *os.File {
-	if filename == "" {
-		filename = "authorized_keys"
-	}
-
 	userDir, uid, gid := getUserInfo()
 
+	baseFile := filepath.ToSlash(userDir + "/.ssh/")
+
 	// try to find authorized_keys file
-	keysFile := filepath.ToSlash(userDir + "/.ssh/authorized_keys")
+	keysFile := filepath.Clean(filepath.ToSlash(userDir + "/.ssh/" + filename))
+
+	relPath, err := filepath.Rel(baseFile, keysFile)
+
+	if err != nil || strings.HasPrefix(relPath, "..") {
+		log.Fatal("Invalid authfile name. Attempt to traverse out of .ssh")
+	}
 
 	fmt.Printf("Attempting to find key file %s\n", keysFile)
 
