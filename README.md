@@ -20,7 +20,7 @@ The tool can be run on behalf of other users on the server `keysync -user [local
 ## Setting up a cronjob
 
 You can set up a cronjob to run as often as you like to keep things in sync. Run
-`crontab -e` as your user, or `cronteab -e -u [localuser]` to set one up on behalf
+`crontab -e` as your user, or `crontab -e -u [localuser]` to set one up on behalf
 of another user, and add the following to sync your keys every 5 minutes:
 
 ```cron
