@@ -13,13 +13,16 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 )
 
 var (
-	ghuser   string
-	username string
+	ghuser      string
+	username    string
+	showversion bool
+	versionnum  string
 )
 
 const (
@@ -27,14 +30,44 @@ const (
 	ENDMARKER   = "### END OF AUTOMATICALLY MANAGED KEYS ###"
 )
 
+func printversion() {
+	var versionstring string
+	var commit string
+	var modified bool
+	if versionnum != "" {
+		versionstring = fmt.Sprintf("v%s", versionnum)
+	}
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.revision" {
+				commit = setting.Value[0:7]
+			} else if setting.Key == "vcs.modified" {
+				modified = setting.Value == "true"
+			}
+		}
+	}
+	if modified {
+		fmt.Println("🚨 WARNING! Binary was built from modified git working copy 🚨")
+	} else if commit == "" {
+		fmt.Println("🚨 WARNING! Binary was not built in git repository 🚨")
+	}
+	if commit != "" {
+		versionstring = fmt.Sprintf("%s (%s)", versionstring, commit)
+	}
+	fmt.Printf("%s: %s", filepath.Base(os.Args[0]), versionstring)
+}
+
 func main() {
 	// Parse the CLI flags
 	flag.Parse()
 	if flag.NFlag() == 0 {
-		fmt.Printf("Usage: %s [options]\n", os.Args[0])
-		fmt.Println("Options:")
-		flag.PrintDefaults()
+		flag.Usage()
 		os.Exit(1)
+	}
+
+	if showversion {
+		printversion()
+		return
 	}
 
 	// get the file handle for the key file and pull out the data
