@@ -76,7 +76,6 @@ func main() {
 	keyData := getKeyLines(fh)
 
 	// load the keys from the github user
-	fmt.Printf("Loading public keys from GitHub user: %s\n", ghuser)
 	result := getGitHubUserKeys(ghuser)
 
 	// build a new file content for the key file with the current file data

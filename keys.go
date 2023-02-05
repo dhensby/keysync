@@ -9,6 +9,10 @@ import (
 )
 
 func getGitHubUserKeys(ghuser string) string {
+	if ghuser == "" {
+		log.Fatal("No GitHub username supplied")
+	}
+	fmt.Printf("Loading public keys from GitHub user: %s\n", ghuser)
 	client := github.NewClient(nil)
 	opt := github.ListOptions{PerPage: 10}
 
