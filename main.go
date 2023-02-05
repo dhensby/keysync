@@ -94,15 +94,18 @@ func main() {
 
 	keyData += "\n" + ENDMARKER + "\n"
 
-	writeFileContent(fh, keyData)
+	updated := writeFileContent(fh, keyData)
 
-	totalKeys := strings.Count(result, "\n")
+	if updated {
 
-	if len(result) > 0 && !strings.HasSuffix(result, "\n") {
-		totalKeys++
+		totalKeys := strings.Count(result, "\n")
+
+		if len(result) > 0 && !strings.HasSuffix(result, "\n") {
+			totalKeys++
+		}
+
+		notify(totalKeys)
 	}
-
-	notify(totalKeys)
 }
 
 func init() {
@@ -187,7 +190,7 @@ func getKeyLines(fh *os.File) string {
 	return newKeyFileData
 }
 
-func writeFileContent(fh *os.File, content string) {
+func writeFileContent(fh *os.File, content string) bool {
 
 	_, err := fh.Seek(0, 0)
 
@@ -212,7 +215,7 @@ func writeFileContent(fh *os.File, content string) {
 	}
 
 	if bytes.Equal(originalMd5.Sum(nil), newMd5.Sum(nil)) {
-		return
+		return false
 	}
 
 	_, err = fh.Seek(0, 0)
@@ -238,6 +241,7 @@ func writeFileContent(fh *os.File, content string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	return true
 }
 
 func notify(added int) {
